@@ -50,7 +50,7 @@
 using DataFrames  # A package for data manipulation
 using Distributions  # A package for using statistical distributions
 using Plots  # A package for creating graphs and plots
-plotly()  # USing Plotly as the backend
+plotly()  # Using Plotly as the backend
 using HypothesisTests  # A package with many statisical tests
 using StatsBase  # A packahe with useful statistical functions
 using Statistics  # built-in Julia package with common statistical tests
