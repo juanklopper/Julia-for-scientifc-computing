@@ -223,6 +223,8 @@ Gadfly.plot(
     Theme(default_color="MidnightBlue", boxplot_spacing=100px)
 )
 
+
+
 # Density plot of Age by Group
 p = Gadfly.plot(
     df,
