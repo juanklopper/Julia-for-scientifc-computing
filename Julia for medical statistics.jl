@@ -63,7 +63,7 @@ import Statistics  # Built-in Julia package with
 # common statistical tests
 import Random  # A package to create random values
 import CSV  # Package to import and export CSV files
-import Query  # A package to manipulate data
+using Query  # A package to manipulate data
 
 # Creating a dataframe object
 # -------------------------------
@@ -321,32 +321,63 @@ plot(
 
 pvalue(ExactOneSampleKSTest(placebo.Cholesterol, Distributions.Normal()))
 pvalue(ExactOneSampleKSTest(intervention.Cholesterol, Distributions.Normal()))
-pvalue(MannWhitneyUTest(placebo.Cholesterol, intervention.Cholesterol))
 
+# Below, we create QQ plots for the two groups
+p1 = plot(x = placebo.Cholesterol, y=Distributions.Normal(), Stat.qq, Geom.point)
+p2 = plot(x = intervention.Cholesterol, y=Distributions.Normal(), Stat.qq, Geom.point)
+
+# The assumptions for the use of tparametric tests are
+# not satisfied.
+
+# We make use of the non-parametric Mann-Whitney-U test
+pvalue(MannWhitneyUTest(placebo.Cholesterol, intervention.Cholesterol))
+# We see a p-value of alrger than 0.05 and we cannot reject
+# our null-hypothesis.
 
 # Importing dataframe
 # -----------------------
 
-df = CSV.read("data.csv");  # Import csv file from internal drive
-first(df, 5)  # Display the first five samples
-print(names(df))  # Display all the variable names (as symbols)
-size(df)  # Display the dimensions of the dataframe object
+# Import csv file from internal drive
+df = CSV.read("JuliaForMedicalStatistics.csv")
 
-df_split = groupby(df, :Group)  # Create a split dataframe on the sample space elements of the Group variable
+# Display the first five samples
+first(df, 5)
+
+# Display all the variable names (as symbols)
+print(names(df))
+
+# Display the dimensions of the dataframe object
+size(df)
+
+# Create a split dataframe on the sample space elements
+# of the Group variable
+df_split = DataFrames.groupby(df, :Group)
 
 # Summary statistics
 # --------------------
 
 # Summary statistics of Age variable
-StatsBase.summarystats(df.CholesterolDelta)
+StatsBase.summarystats(df.Age)
 
-# Mean of Age variable split by the Group variable
-DataFrames.combine(df_split, :Age => Statistics.mean)
+# Mean and standard deviation of Age variable split
+# by the Group variable
+DataFrames.combine(
+    df_split,
+    :Age => Statistics.mean,
+    :Age => Statistics.std
+)
+
+# We can apply a self-created function too
+DataFrames.combine(
+    df_split,
+    :Age => mean_std
+)
 
 # Mean of CholesterolDelta split by Group variable
-DataFrames.combine(df_split, :CholesterolDelta => Statistics.mean)
+DataFrames.combine(df_split, :CholesterolDelta => mean_std)
 
-DataFrames.combine(x -> x[:CholesterolBefore] - x.CholesterolAfter, df_split)  # Calculation on variables
+# Calculation on variables
+DataFrames.combine(x -> x[:CholesterolBefore] - x.CholesterolAfter, df_split)
 
 # Use a do block to calculate summary statistics
 DataFrames.combine(df_split) do df
@@ -359,12 +390,16 @@ end
 # Data queries
 # --------------
 
-# Create a dataframe object of all subjects older than 49 an donly include the Group and CholesterolDelta variables
-older_dplyr = df |> @filter(_.Age >= 50) |> @map({_.Group, _.CholesterolDelta}) |> DataFrame
+# Create a dataframe object of all subjects older than 49 and
+# only include the Group and CholesterolDelta variables
+older_dplyr =
+    df |> @filter(_.Age >= 50) |>
+    @map({_.Group, _.CholesterolDelta}) |> DataFrames.DataFrame
+
 older_linq = @from i in df begin
     @where i.Age >= 50
     @select {i.Group, i.CholesterolDelta}
-    @collect DataFrame
+    @collect DataFrames.DataFrame
 end
 
 
