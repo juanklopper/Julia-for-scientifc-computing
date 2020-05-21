@@ -51,19 +51,32 @@
 # reference the package name to gain access to its
 # functions.
 
-import DataFrames  # A package for data manipulation
-import Distributions  # A package for using statistical
-# distributions
-using Gadfly  # A package for creating graphs and plots
-using HypothesisTests  # A package with many statisical
-# tests
-import StatsBase  # A package with useful statistical
-# functions
-import Statistics  # Built-in Julia package with
-# common statistical tests
-import Random  # A package to create random values
-import CSV  # Package to import and export CSV files
-using Query  # A package to manipulate data
+# A package for data manipulation
+import DataFrames
+
+# A package for using statistical distributions
+import Distributions
+
+# A package for creating graphs and plots
+using Gadfly
+
+# A package with many statisical tests
+using HypothesisTests
+
+# A package with useful statistical functions
+import StatsBase
+
+# Built-in Julia package with common statistical tests
+import Statistics
+
+ # A package to create random values
+import Random
+
+# Package to import and export CSV files
+import CSV
+
+# A package to manipulate data
+using Query
 
 # Creating a dataframe object
 # -------------------------------
@@ -89,9 +102,45 @@ using Query  # A package to manipulate data
 # concatenate word together (called snake-case), i.e.
 # my_variable_name.
 
-# Creating list objects
-groups = ["Placebo", "Interventions"]
-stages = ["I", "II", "III", "IV"]
+# The seed! function in the Random package seeds
+# the pseudorandom number generator so that we get
+# back the same "random" numbers everytime the code
+# is run.  Below, we seed it with the integer 12.
+# The semi-colon suppresses any results from being
+# displayed.
+Random.seed!(12);
+
+age = rand(30:65, 46)
+
+gender = StatsBase.sample(["Female", "Male"], StatsBase.Weights([0.6, 0.4]), 46)
+
+group = repeat(["Placebo"], 23)
+
+append!(group, repeat(["Active"], 23))
+
+hdl_cholesterol_before = rand(Distributions.Normal(1.24, 0.31), 23)
+
+append!(hdl_cholesterol_before, rand(Distributions.Normal(1.24, 0.29), 23))
+
+hdl_cholesterol_after = rand(Distributions.Normal(1.4, 0.35), 23)
+
+append!(hdl_cholesterol_after, rand(Distributions.Normal(1.46, 0.42), 23))
+
+weight_before = rand(Distributions.Normal(79.2, 16.5), 23)
+
+append!(weight_before, rand(Distributions.Normal(72.1, 12), 23))
+
+weight_after = rand(Distributions.Normal(79.3, 16.8), 23)
+
+append!(weight_after, rand(Distributions.Normal(72.8, 12.6), 23))
+
+dbp_before = rand(Distributions.Normal(71, 12.2), 23)
+
+append!(dbp_before, rand(Distributions.Normal(73, 8), 23))
+
+dbp_after = rand(Distributions.Normal(73.5, 8.2), 23)
+
+append!(dbp_after, rand(Distributions.Normal(73.0, 8.2), 23))
 
 # The for loop in Julia allows for constrained
 # iteration.  Below, we iterate over the for loop
@@ -106,35 +155,46 @@ stages = ["I", "II", "III", "IV"]
 # specified collection.
 # The randn() function returns a random value from
 # the standard normal distribution.
-side_effects = []
-for i = 1:100
-    push!(side_effects, randn() >= 1.0 ? "Yes" : "No")
+
+bmi_before = []
+
+for i = 1:46
+    placebo_bmi_before = rand(Distributions.Normal(26.8, 5))
+    active_bmi_before = rand(Distributions.Normal(26.7, 3.7))
+    push!(bmi_before, group[i] == "Placebo" ? placebo_bmi_before : active_bmi_before)
 end
 
-# The seed! function in the Random package seeds
-# the pseudorandom number generator so that we get
-# back the same "random" numbers everytime the code
-# is run.  Below, we seed it with the integer 12.
-# The semi-colon suppresses any results from being
-# displayed.
+bmi_after = []
 
-Random.seed!(12);  # For reproducible results
+for i = 1:46
+    placebo_bmi_after = rand(Distributions.Normal(27.0, 5.2))
+    active_bmi_after = rand(Distributions.Normal(27.2, 5.2))
+    push!(bmi_after, group[i] == "Placebo" ? placebo_bmi_after : active_bmi_after)
+end
 
 # The DataFrame function from the DataFrames package
 # creates a dataframe object.  We have variable names
 # and the data point values for that variable as
 # arguments.
 
-# Creating the dataframe object with variables:
-# ID, Group, Stage, Age, Cholesterol and with
-# 100 subjects
+# Creating the dataframe object with variables.
 df = DataFrames.DataFrame(
-    ID = range(1, stop = 100),
-    Group = StatsBase.sample(groups, 100),
-    Stage = StatsBase.sample(stages, 100),
-    Age = rand(18:55, 100),
-    Cholesterol = round.(rand(Distributions.Normal(7, 2), 100), digits = 1),
-    SideEffects = side_effects,
+    ID = range(1, stop = 46),
+    Age = age,
+    Gender = gender,
+    Group = group,
+    HDLCholesterolBefore = hdl_cholesterol_before,
+    HDLCholesterolAfter = hdl_cholesterol_after,
+    HDLCholesterolDelta = hdl_cholesterol_before .- hdl_cholesterol_after,
+    WeightBefore = weight_before,
+    WeightAfter = weight_after,
+    WeightDelta = weight_before .- weight_after,
+    DBPBefore = dbp_before,
+    DPBAfter = dbp_after,
+    DBPDelta = dbp_before .- dbp_after,
+    BMIBefore = bmi_before,
+    BMIAfter = bmi_after,
+    BMIDelta = bmi_before .- bmi_after
 )
 
 # We can change the type of column to categorical
@@ -144,8 +204,8 @@ df = DataFrames.DataFrame(
 # Setting variables as categorical (must use
 # symbol notation)
 DataFrames.categorical!(df, :Group)
-DataFrames.categorical!(df, :Stage)
-DataFrames.categorical!(df, :SideEffects)
+
+DataFrames.categorical!(df, :Gender)
 
 
 # Slicing
@@ -229,7 +289,7 @@ Statistics.quantile(df[!, :Age], 0.75) - Statistics.quantile(df[!, :Age], 0.25)
 StatsBase.span(df[!, :Age])
 
 # Mean and std of selected columns
-StatsBase.describe(df[!, [:Age, :Cholesterol]], :AVE => StatsBase.mean, :STD => StatsBase.std)
+StatsBase.describe(df[!, [:Age, :HDLCholesterolDelta]], :AVE => StatsBase.mean, :STD => StatsBase.std)
 
 # Sample space elements of Group variable
 unique(df[!, :Group])
@@ -281,7 +341,7 @@ Gadfly.draw(SVG("density.svg", 1600px, 900px), p)
 plot(
     df,
     x = "Age",
-    y = "Cholesterol",
+    y = "HDLCholesterolAfter",
     color = :Group,
     Geom.point,
     layer(
@@ -289,7 +349,7 @@ plot(
         Geom.line,
         Geom.ribbon(fill = true),
     ),
-    Guide.title("Cholesterol as predicted by age for each group"),
+    Guide.title("HDL as predicted by age for each group"),
     Theme(point_size = 10px, alphas = [0.5]),
 )
 
@@ -298,111 +358,39 @@ plot(
 # ----------------------
 
 # Below we answer the research question as to
-# wether the cholesterol values for each
+# whether the cholesterol values for each
 # group are from different distributions.
-# We begin by summarizing the Cholesterol
+# We begin by summarizing the CholesterolDelta
 # variable for the two groups.
-StatsBase.describe(placebo.Cholesterol)
-StatsBase.describe(intervention.Cholesterol)
+StatsBase.describe(placebo.HDLCholesterolDelta)
+StatsBase.describe(intervention.HDLCholesterolDelta)
 
 # We can also calculate the confidence interval
 # around the means.
-HypothesisTests.confint(HypothesisTests.OneSampleTTest(placebo.Cholesterol))
-HypothesisTests.confint(HypothesisTests.OneSampleTTest(intervention.Cholesterol))
+HypothesisTests.confint(HypothesisTests.OneSampleTTest(placebo.HDLCholesterolDelta))
+HypothesisTests.confint(HypothesisTests.OneSampleTTest(intervention.HDLCholesterolDelta))
 
 # We can plot the two sample densities
 plot(
     df,
-    x = :Cholesterol,
+    x = :HDLCholesterolDelta,
     color = :Group,
     Geom.density,
     Guide.title("Age distribution by group"),
 )
 
-pvalue(ExactOneSampleKSTest(placebo.Cholesterol, Distributions.Normal()))
-pvalue(ExactOneSampleKSTest(intervention.Cholesterol, Distributions.Normal()))
+pvalue(ExactOneSampleKSTest(placebo.HDLCholesterolDelta, Distributions.Normal()))
+pvalue(ExactOneSampleKSTest(intervention.HDLCholesterolDelta, Distributions.Normal()))
 
 # Below, we create QQ plots for the two groups
-p1 = plot(x = placebo.Cholesterol, y=Distributions.Normal(), Stat.qq, Geom.point)
-p2 = plot(x = intervention.Cholesterol, y=Distributions.Normal(), Stat.qq, Geom.point)
+p1 = plot(x = placebo.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point)
+p2 = plot(x = intervention.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point)
 
 # The assumptions for the use of tparametric tests are
 # not satisfied.
 
 # We make use of the non-parametric Mann-Whitney-U test
-pvalue(MannWhitneyUTest(placebo.Cholesterol, intervention.Cholesterol))
+pvalue(MannWhitneyUTest(placebo.HDLCholesterolDelta, intervention.HDLCholesterolDelta))
+pvalue(TwoSampleTTest(placebo.HDLCholesterolDelta, intervention.HDLCholesterolDelta))
 # We see a p-value of alrger than 0.05 and we cannot reject
 # our null-hypothesis.
-
-# Importing dataframe
-# -----------------------
-
-# Import csv file from internal drive
-df = CSV.read("JuliaForMedicalStatistics.csv")
-
-# Display the first five samples
-first(df, 5)
-
-# Display all the variable names (as symbols)
-print(names(df))
-
-# Display the dimensions of the dataframe object
-size(df)
-
-# Create a split dataframe on the sample space elements
-# of the Group variable
-df_split = DataFrames.groupby(df, :Group)
-
-# Summary statistics
-# --------------------
-
-# Summary statistics of Age variable
-StatsBase.summarystats(df.Age)
-
-# Mean and standard deviation of Age variable split
-# by the Group variable
-DataFrames.combine(
-    df_split,
-    :Age => Statistics.mean,
-    :Age => Statistics.std
-)
-
-# We can apply a self-created function too
-DataFrames.combine(
-    df_split,
-    :Age => mean_std
-)
-
-# Mean of CholesterolDelta split by Group variable
-DataFrames.combine(df_split, :CholesterolDelta => mean_std)
-
-# Calculation on variables
-DataFrames.combine(x -> x[:CholesterolBefore] - x.CholesterolAfter, df_split)
-
-# Use a do block to calculate summary statistics
-DataFrames.combine(df_split) do df
-    (average = Statistics.mean(df.Age),
-    standard_dev = Statistics.std(df.Age),
-    variance = Statistics.var(df.Age))
-end
-
-
-# Data queries
-# --------------
-
-# Create a dataframe object of all subjects older than 49 and
-# only include the Group and CholesterolDelta variables
-older_dplyr =
-    df |> @filter(_.Age >= 50) |>
-    @map({_.Group, _.CholesterolDelta}) |> DataFrames.DataFrame
-
-older_linq = @from i in df begin
-    @where i.Age >= 50
-    @select {i.Group, i.CholesterolDelta}
-    @collect DataFrames.DataFrame
-end
-
-
-
-
-# Data visualization
