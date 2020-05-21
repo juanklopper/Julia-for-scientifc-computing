@@ -78,8 +78,8 @@ import CSV
 # A package to manipulate data
 using Query
 
-# Creating a dataframe object
-# -------------------------------
+# Simulating data
+# ---------------
 
 # Julia has different collections.  Below, we use a
 # list object.  List obejcts are indicated by the
@@ -101,6 +101,10 @@ using Query
 # letters are preferred.  Use underscore to
 # concatenate word together (called snake-case), i.e.
 # my_variable_name.
+
+# In this tutorial we recreate some of the data
+# published in the paper below:
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5724841/
 
 # The seed! function in the Random package seeds
 # the pseudorandom number generator so that we get
@@ -283,6 +287,7 @@ Statistics.quantile(df[!, :Age], [0.25, 0.75])
 
 # Interquartile range of the Age values
 StatsBase.iqr(df[!, :Age])
+
 Statistics.quantile(df[!, :Age], 0.75) - Statistics.quantile(df[!, :Age], 0.25)
 
 # Range of the Age values
