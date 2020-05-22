@@ -402,9 +402,6 @@ p = plot(
     Guide.title("Change in HDL by group")
 )
 
-# Save the file to disk
-Gadfly.draw(SVG("density.svg", 1600px, 900px), p)
-
 # Linear model
 plot(
     df,
