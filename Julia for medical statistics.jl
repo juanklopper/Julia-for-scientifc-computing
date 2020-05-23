@@ -1,7 +1,6 @@
 # JULIA FOR MEDICAL STATISTICS
 # ============================
 
-
 # Introduction
 # -------------
 
@@ -463,15 +462,15 @@ gg_obs = convert(Array, FreqTables.freqtable(df, :Group, :Gender))
 
 # To calculate an expected table, we need
 # row-, column, and overall totals.
-gg_col_totals = sum(group_gender_observed, dims = 1)
+gg_col_totals = sum(gg_obs, dims = 1)
 
-gg_row_totals = sum(group_gender_observed, dims = 2)
+gg_row_totals = sum(gg_obs, dims = 2)
 
-gg_total = sum(group_gender_observed)
+gg_total = sum(gg_obs)
 
 # We need to know how many rows
 # and columns we need to loop over.
-gg_dim = size(group_gender_observed)
+gg_dim = size(gg_obs)
 
 # We create an array of appropriate
 # size to hold the expected table
