@@ -76,7 +76,13 @@ import Random
 import CSV
 
 # A package to manipulate data
+# using DataFramesMeta
+
+# A package to manipulate data
 using Query
+
+# Frequency table
+import FreqTables
 
 # Simulating data
 # ---------------
@@ -116,7 +122,8 @@ Random.seed!(12);
 
 age = rand(30:65, 46)
 
-gender = StatsBase.sample(["Female", "Male"], StatsBase.Weights([0.6, 0.4]), 46)
+gender = StatsBase.sample(["Female", "Male"],
+    StatsBase.Weights([0.6, 0.4]), 46)
 
 group = repeat(["Placebo"], 23)
 
@@ -124,27 +131,33 @@ append!(group, repeat(["Active"], 23))
 
 hdl_cholesterol_before = rand(Distributions.Normal(1.24, 0.31), 23)
 
-append!(hdl_cholesterol_before, rand(Distributions.Normal(1.24, 0.29), 23))
+append!(hdl_cholesterol_before,
+    rand(Distributions.Normal(1.24, 0.29), 23))
 
 hdl_cholesterol_after = rand(Distributions.Normal(1.4, 0.35), 23)
 
-append!(hdl_cholesterol_after, rand(Distributions.Normal(1.46, 0.42), 23))
+append!(hdl_cholesterol_after,
+    rand(Distributions.Normal(1.46, 0.42), 23))
 
 weight_before = rand(Distributions.Normal(79.2, 16.5), 23)
 
-append!(weight_before, rand(Distributions.Normal(72.1, 12), 23))
+append!(weight_before,
+    rand(Distributions.Normal(72.1, 12), 23))
 
 weight_after = rand(Distributions.Normal(79.3, 16.8), 23)
 
-append!(weight_after, rand(Distributions.Normal(72.8, 12.6), 23))
+append!(weight_after,
+    rand(Distributions.Normal(72.8, 12.6), 23))
 
 dbp_before = rand(Distributions.Normal(71, 12.2), 23)
 
-append!(dbp_before, rand(Distributions.Normal(73, 8), 23))
+append!(dbp_before,
+    rand(Distributions.Normal(73, 8), 23))
 
 dbp_after = rand(Distributions.Normal(73.5, 8.2), 23)
 
-append!(dbp_after, rand(Distributions.Normal(73.0, 8.2), 23))
+append!(dbp_after,
+    rand(Distributions.Normal(73.0, 8.2), 23))
 
 # The for loop in Julia allows for constrained
 # iteration.  Below, we iterate over the for loop
@@ -198,7 +211,6 @@ df = DataFrames.DataFrame(
     DBPDelta = dbp_before .- dbp_after,
     BMIBefore = bmi_before,
     BMIAfter = bmi_after,
-    BMIDelta = bmi_before .- bmi_after
 )
 
 # We can change the type of column to categorical
@@ -256,6 +268,37 @@ placebo = df[(df.Group .== "Placebo"), :]
 # Creating a sub-dataframe object
 intervention = df[(df.Group .!= "Placebo"), :]
 
+# We can add a column that is a manipulation
+# of other columns.
+df[:BMIDelta] = df.BMIBefore .- df.BMIAfter
+
+# Below, we use macros from the Query
+# package to access columns.
+df |>
+    @query(i, begin
+        @where i.Age > 50
+        @select {i.HDLCholesterolBefore, i.HDLCholesterolAfter}
+    end) |>
+        DataFrames.DataFrame
+
+# In many cases, we capture data in view of
+# protecting subject privacy.  In a simple example,
+# we might subtract an arbitrary number of years from
+# the age variable when we capture the data.  Now we have
+# to add it back.
+df.Age = df.Age .+ 2
+
+# The @filter macro achieves the same result as
+# our previous age and group selection above.
+df |> @filter(_.Age .> 50 && _.Group == "Placebo") |> DataFrames.DataFrame
+
+# The @groupby macro allows us to group by
+# sample space elements.
+df |>
+    @groupby(_.Group) |>
+    @map({Key = key(_), Count = length(_)}) |>
+    DataFrames.DataFrame
+
 
 # Summary statistics
 # --------------------
@@ -299,8 +342,18 @@ StatsBase.describe(df[!, [:Age, :HDLCholesterolDelta]], :AVE => StatsBase.mean, 
 # Sample space elements of Group variable
 unique(df[!, :Group])
 
+df |>
+    @groupby(_.Group) |>
+    @map({Key = key(_)}) |>
+    DataFrames.DataFrame
+
 # Frequency of sample space elements of Group variable
 StatsBase.countmap(df[!, :Group])
+
+df |>
+    @groupby(_.Group) |>
+    @map({Key = key(_), Count = length(_)}) |>
+    DataFrames.DataFrame
 
 # Median age of only the subjects older than 50 in the placebo group
 Statistics.median(df[(df.Age .> 50) .& (df.Group .== "Placebo"), :][!, :Age])
@@ -312,6 +365,16 @@ end
 
 # Mean and standard deviation of the Age values
 mean_std(df.Age)
+
+# Doing the same by group by groups
+# using macros.
+df |>
+    @groupby(_.Group) |>
+    @map({Key = key(_),
+        Ave_age = Statistics.mean(_.Age),
+        Std_age = Statistics.std(_.Age)}) |>
+    DataFrames.DataFrame
+
 
 # Data visualization
 # ------------------
@@ -330,22 +393,19 @@ plot(
 )
 
 
-# Density plot of Age by Group
+# Density plot of change in HDL by Group
 p = plot(
     df,
-    x = :Age,
+    x = :HDLCholesterolDelta,
     color = :Group,
     Geom.density,
-    Guide.title("Age distribution by group")
+    Guide.title("Change in HDL by group")
 )
-
-# Save the file to disk
-Gadfly.draw(SVG("density.svg", 1600px, 900px), p)
 
 # Linear model
 plot(
     df,
-    x = "Age",
+    x = "BMIBefore",
     y = "HDLCholesterolAfter",
     color = :Group,
     Geom.point,
@@ -354,7 +414,7 @@ plot(
         Geom.line,
         Geom.ribbon(fill = true),
     ),
-    Guide.title("HDL as predicted by age for each group"),
+    Guide.title("Final HDL as predicted by initial BMI for each group"),
     Theme(point_size = 10px, alphas = [0.5]),
 )
 
@@ -375,27 +435,63 @@ StatsBase.describe(intervention.HDLCholesterolDelta)
 HypothesisTests.confint(HypothesisTests.OneSampleTTest(placebo.HDLCholesterolDelta))
 HypothesisTests.confint(HypothesisTests.OneSampleTTest(intervention.HDLCholesterolDelta))
 
-# We can plot the two sample densities
-plot(
-    df,
-    x = :HDLCholesterolDelta,
-    color = :Group,
-    Geom.density,
-    Guide.title("Age distribution by group"),
-)
+# We have already plotted the two sample distributions.
 
+# Let's see of they come from populations in which the
+# variable is normally distributed.
 pvalue(ExactOneSampleKSTest(placebo.HDLCholesterolDelta, Distributions.Normal()))
 pvalue(ExactOneSampleKSTest(intervention.HDLCholesterolDelta, Distributions.Normal()))
 
-# Below, we create QQ plots for the two groups
-p1 = plot(x = placebo.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point)
-p2 = plot(x = intervention.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point)
+# Below, we create QQ plots for the two groups.
+p1 = plot(x = placebo.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point);
+p2 = plot(x = intervention.HDLCholesterolDelta, y=Distributions.Normal(), Stat.qq, Geom.point);
+Gadfly.vstack(p1, p2)
 
-# The assumptions for the use of tparametric tests are
+# The assumptions for the use of parametric tests are
 # not satisfied.
-
-# We make use of the non-parametric Mann-Whitney-U test
+# We make use of the non-parametric Mann-Whitney-U test.
 pvalue(MannWhitneyUTest(placebo.HDLCholesterolDelta, intervention.HDLCholesterolDelta))
-pvalue(TwoSampleTTest(placebo.HDLCholesterolDelta, intervention.HDLCholesterolDelta))
+pvalue(EqualVarianceTTest(placebo.HDLCholesterolDelta, intervention.HDLCholesterolDelta))
 # We see a p-value of alrger than 0.05 and we cannot reject
 # our null-hypothesis.
+
+# Finally, we do a χ-squared test for independence
+# between the group and gender variables.
+# We use the freqtable() function to create an
+# observed table.
+gg_obs = convert(Array, FreqTables.freqtable(df, :Group, :Gender))
+
+# To calculate an expected table, we need
+# row-, column, and overall totals.
+gg_col_totals = sum(group_gender_observed, dims = 1)
+
+gg_row_totals = sum(group_gender_observed, dims = 2)
+
+gg_total = sum(group_gender_observed)
+
+# We need to know how many rows
+# and columns we need to loop over.
+gg_dim = size(group_gender_observed)
+
+# We create an array of appropriate
+# size to hold the expected table
+# and fill it with zeros.
+gg_exp = zeros(gg_dim[1], gg_dim[2])
+
+# Below, we simply loop over the
+# row and column totals to created
+# our expected table.
+for i = 1:gg_dim[1]
+    for j = 1:gg_dim[2]
+        gg_exp[i, j] = gg_col_totals[j] * gg_row_totals[i] / gg_total
+    end
+end
+
+gg_exp
+
+# Now we use the equation for
+# calculate the χ2 value.
+χ2 = sum(((gg_obs .- gg_exp).^2)./gg_exp)
+
+# Finally the p-value for a single degree of freedom
+Distributions.pdf(Distributions.Chisq(1), χ2)
