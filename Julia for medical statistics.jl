@@ -3,7 +3,7 @@
 
 
 # Introduction
-# ------------
+# -------------
 
 # This new version of JULIA FOR MEDICAL STATISTICS
 # aims to show you how to use Julia for common
