@@ -116,7 +116,7 @@ import FreqTables
 # back the same "random" numbers everytime the code
 # is run.  Below, we seed it with the integer 12.
 # The semi-colon suppresses any results from being
-# displayed.
+# displayed to the screen.
 Random.seed!(12);
 
 age = rand(30:65, 46)
